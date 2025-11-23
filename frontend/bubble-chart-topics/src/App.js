@@ -12,18 +12,20 @@ import {
   Cell,
 } from "recharts";
 import Papa from "papaparse";
-import { Upload, X } from "lucide-react";
+import { X } from "lucide-react";
 
 export default function App() {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [sourceData, setSourceData] = useState([]);
 
-  const processCSV = (file) => {
+  const processCSV = (csvText) => {
     setLoading(true);
-    Papa.parse(file, {
+    setError(null);
+    Papa.parse(csvText, {
       header: true,
       skipEmptyLines: true,
       dynamicTyping: true,
@@ -48,13 +50,13 @@ export default function App() {
         });
 
         setSourceData([
-          { name: "Correos", value: correoCount, color: "#3b82f6" },
+          { name: "Emails", value: correoCount, color: "#3b82f6" },
           { name: "Tweets", value: tweetCount, color: "#10b981" },
         ]);
 
         const langData = [
-          { name: "Alemán", value: alemanCount, color: "#f59e0b" },
-          { name: "Español", value: espanolCount, color: "#ec4899" },
+          { name: "German", value: alemanCount, color: "#f59e0b" },
+          { name: "Spanish", value: espanolCount, color: "#ec4899" },
         ];
 
         const topicsMap = {};
@@ -109,7 +111,7 @@ export default function App() {
 
         const processedData = Object.values(topicsMap)
           .map((item, index) => ({
-            topic: `Tema ${item.topic}`,
+            topic: `Topic ${item.topic}`,
             topicId: item.topic,
             yPosition: index + 1,
             total: item.total,
@@ -138,14 +140,35 @@ export default function App() {
         });
         setLoading(false);
       },
-      error: () => setLoading(false),
+      error: (err) => {
+        console.error("Error parsing CSV:", err);
+        setError("Error parsing the CSV file");
+        setLoading(false);
+      },
     });
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) processCSV(file);
-  };
+  // Cargar CSV automáticamente desde GitHub
+  React.useEffect(() => {
+    const fetchCSV = async () => {
+      try {
+        const response = await fetch(
+          "https://raw.githubusercontent.com/julian-rosas/Customer_Happy_Index_Project/main/tweets_limpios_completos_ner_sentiment_final.csv"
+        );
+        if (!response.ok) {
+          throw new Error("Could not load the CSV file");
+        }
+        const csvText = await response.text();
+        processCSV(csvText);
+      } catch (err) {
+        console.error("Error fetching CSV:", err);
+        setError("Error loading data from GitHub");
+        setLoading(false);
+      }
+    };
+
+    fetchCSV();
+  }, []);
 
   const getColorByLang = (langA, langE) => {
     if (langA > langE) return "#f59e0b";
@@ -193,7 +216,7 @@ export default function App() {
               marginBottom: "0.25rem",
             }}
           >
-            🇩🇪 Alemán: <strong>{d.langA}</strong>
+            🇩🇪 German: <strong>{d.langA}</strong>
           </p>
           <p
             style={{
@@ -202,7 +225,7 @@ export default function App() {
               marginBottom: "0.25rem",
             }}
           >
-            🇪🇸 Español: <strong>{d.langE}</strong>
+            🇪🇸 Spanish: <strong>{d.langE}</strong>
           </p>
           <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
             Sentiment:{" "}
@@ -218,7 +241,7 @@ export default function App() {
               fontWeight: "500",
             }}
           >
-            👆 Click para ver detalles
+            👆 Click on a bubble to see topic details
           </p>
         </div>
       );
@@ -255,7 +278,7 @@ export default function App() {
               letterSpacing: "-0.02em",
             }}
           >
-            Análisis de Topics por Sentiment
+            Topic Analysis by Sentiment
           </h1>
           <p
             style={{
@@ -265,7 +288,7 @@ export default function App() {
               letterSpacing: "0.01em",
             }}
           >
-            Visualización interactiva de clusters y fuentes
+            Interactive visualization of clusters and sources
           </p>
         </div>
 
@@ -280,62 +303,7 @@ export default function App() {
               maxWidth: "600px",
               margin: "0 auto",
             }}
-          >
-            <Upload
-              style={{
-                width: "64px",
-                height: "64px",
-                margin: "0 auto 1.5rem",
-                color: "#3b82f6",
-              }}
-            />
-            <h2
-              style={{
-                fontSize: "1.75rem",
-                fontWeight: "700",
-                marginBottom: "1rem",
-                color: "#1e293b",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              Cargar archivo CSV
-            </h2>
-            <p
-              style={{
-                color: "#64748b",
-                marginBottom: "1.5rem",
-                lineHeight: "1.6",
-                fontWeight: "400",
-              }}
-            >
-              Sube tu archivo con las columnas necesarias para el análisis
-            </p>
-            <label>
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleFileUpload}
-                style={{ display: "none" }}
-                disabled={loading}
-              />
-              <span
-                style={{
-                  display: "inline-block",
-                  padding: "1rem 2.5rem",
-                  background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-                  color: "white",
-                  borderRadius: "0.75rem",
-                  cursor: "pointer",
-                  fontWeight: "600",
-                  fontSize: "1.05rem",
-                  boxShadow: "0 4px 14px rgba(59, 130, 246, 0.4)",
-                  transition: "all 0.2s",
-                }}
-              >
-                {loading ? "⏳ Procesando..." : "📁 Seleccionar archivo"}
-              </span>
-            </label>
-          </div>
+          ></div>
         ) : (
           <>
             {/* Stats Cards */}
@@ -425,7 +393,7 @@ export default function App() {
                     letterSpacing: "0.02em",
                   }}
                 >
-                  Rango Sentiment
+                  Sentiment Range
                 </div>
                 <div
                   style={{
@@ -467,7 +435,7 @@ export default function App() {
                     letterSpacing: "-0.01em",
                   }}
                 >
-                  📊 Distribución de Clusters
+                  📊 Cluster Distribution
                 </h3>
                 <p
                   style={{
@@ -477,7 +445,7 @@ export default function App() {
                     fontWeight: "400",
                   }}
                 >
-                  Click en una burbuja para ver detalles del tema
+                  Click on a bubble to see topic details
                 </p>
 
                 <div
@@ -507,7 +475,7 @@ export default function App() {
                         background: "#f59e0b",
                       }}
                     ></div>
-                    <span>🇩🇪 Alemán dominante</span>
+                    <span>🇩🇪 German is Dominant</span>
                   </div>
                   <div
                     style={{
@@ -527,7 +495,7 @@ export default function App() {
                         background: "#ec4899",
                       }}
                     ></div>
-                    <span>🇪🇸 Español dominante</span>
+                    <span>🇪🇸 Spanish is Dominant</span>
                   </div>
                   <div
                     style={{
@@ -547,7 +515,7 @@ export default function App() {
                         background: "#6366f1",
                       }}
                     ></div>
-                    <span>Balanceado</span>
+                    <span>Balanced</span>
                   </div>
                 </div>
 
@@ -562,7 +530,7 @@ export default function App() {
                       name="Sentiment"
                       domain={[-1, 1]}
                       label={{
-                        value: "Sentiment Score Promedio",
+                        value: "Sentiment Score Average",
                         position: "bottom",
                         offset: 40,
                       }}
@@ -571,7 +539,7 @@ export default function App() {
                     <YAxis
                       type="number"
                       dataKey="yPosition"
-                      name="Tema"
+                      name="Topic"
                       domain={[0, "dataMax + 1"]}
                       tick={false}
                       label={{
@@ -627,7 +595,7 @@ export default function App() {
                       letterSpacing: "-0.01em",
                     }}
                   >
-                    📍 Fuente de Datos
+                    📍 Data Source
                   </h3>
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
@@ -664,7 +632,7 @@ export default function App() {
                         borderRadius: "0.5rem",
                       }}
                     >
-                      <span>📧 Correos</span>
+                      <span>📧 Emails</span>
                       <strong
                         style={{ color: "#3b82f6", fontSize: "1.125rem" }}
                       >
@@ -707,7 +675,7 @@ export default function App() {
                       letterSpacing: "-0.01em",
                     }}
                   >
-                    🌍 Distribución por Idioma
+                    🌍 Language Distribution
                   </h3>
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
@@ -744,7 +712,7 @@ export default function App() {
                         borderRadius: "0.5rem",
                       }}
                     >
-                      <span>🇩🇪 Alemán</span>
+                      <span>🇩🇪 German</span>
                       <strong
                         style={{ color: "#f59e0b", fontSize: "1.125rem" }}
                       >
@@ -760,7 +728,7 @@ export default function App() {
                         borderRadius: "0.5rem",
                       }}
                     >
-                      <span>🇪🇸 Español</span>
+                      <span>🇪🇸 Spanish</span>
                       <strong
                         style={{ color: "#ec4899", fontSize: "1.125rem" }}
                       >
@@ -843,7 +811,7 @@ export default function App() {
                         letterSpacing: "-0.01em",
                       }}
                     >
-                      📈 Estadísticas
+                      📈 Statistics
                     </h4>
                     <div
                       style={{
@@ -861,7 +829,7 @@ export default function App() {
                       </p>
                       <p>
                         <strong style={{ fontWeight: "600" }}>
-                          🇩🇪 Alemán:
+                          🇩🇪 German:
                         </strong>{" "}
                         {selectedTopic.langA} (
                         {(
@@ -872,7 +840,7 @@ export default function App() {
                       </p>
                       <p>
                         <strong style={{ fontWeight: "600" }}>
-                          🇪🇸 Español:
+                          🇪🇸 Spanish:
                         </strong>{" "}
                         {selectedTopic.langE} (
                         {(
@@ -883,7 +851,7 @@ export default function App() {
                       </p>
                       <p>
                         <strong style={{ fontWeight: "600" }}>
-                          Sentiment promedio:
+                          Average Sentiment:
                         </strong>{" "}
                         <span
                           style={{
@@ -915,7 +883,7 @@ export default function App() {
                         letterSpacing: "-0.01em",
                       }}
                     >
-                      🔑 Palabras Clave
+                      🔑 Keywords
                     </h4>
                     {selectedTopic.keywords ? (
                       <div
@@ -945,7 +913,7 @@ export default function App() {
                       </div>
                     ) : (
                       <p style={{ color: "#9ca3af", fontStyle: "italic" }}>
-                        No disponibles
+                        Not available
                       </p>
                     )}
                   </div>
@@ -971,7 +939,7 @@ export default function App() {
                         letterSpacing: "-0.01em",
                       }}
                     >
-                      ✨ Tweet Representativo
+                      ✨ Representative Text
                     </h4>
                     <p
                       style={{
@@ -997,7 +965,7 @@ export default function App() {
                       letterSpacing: "-0.01em",
                     }}
                   >
-                    💬 Muestra de Tweets (mostrando{" "}
+                    💬 Sample Text (showing{" "}
                     {Math.min(5, selectedTopic.tweets.length)} de{" "}
                     {selectedTopic.tweets.length})
                   </h4>
@@ -1060,9 +1028,9 @@ export default function App() {
                             }}
                           >
                             <strong style={{ fontWeight: "600" }}>
-                              Idioma:
+                              Language:
                             </strong>{" "}
-                            {t.lang === "A" ? "🇩🇪 Alemán" : "🇪🇸 Español"}
+                            {t.lang === "A" ? "🇩🇪 German" : "🇪🇸 Spanish"}
                           </span>
                           {t.fuente === "C" && (
                             <span
@@ -1074,7 +1042,7 @@ export default function App() {
                                 fontWeight: "600",
                               }}
                             >
-                              📧 Correo
+                              📧 Email
                             </span>
                           )}
                         </div>
